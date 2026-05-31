@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#5c7a6e">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="引っかかり">
+<link rel="manifest" id="manifest">
+<title>引っかかり日記</title>
+<style>
+:root {
+  --bg: #faf9f7;
+  --bg2: #f2efe9;
+  --card: #ffffff;
+  --text: #2c2c2c;
+  --muted: #888;
+  --border: #e6e2db;
+  --accent: #5c7a6e;
+  --accent-light: #e6efec;
+  --danger: #b04040;
+  --font: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', 'Noto Sans JP', sans-serif;
+  --radius: 12px;
+  --nav-h: 60px;
+  --top-h: 52px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  max-width: 640px;
+  margin: 0 auto;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ── Top bar ── */
+#topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  max-width: 640px;
+  margin: 0 auto;
+}
+#search-wrap {
+  display: flex;
+  align-items: center;
+  height: var(--top-h);
+  padding: 0 12px;
+  gap: 8px;
+}
+#search-input {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  background: var(--bg2);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+}
+#search-input:focus { border-color: var(--accent); }
+#search-clear {
+  display: none;
+  background: none; border: none;
+  font-size: 16px; color: var(--muted);
+  cursor: pointer; padding: 6px; line-height: 1;
+}
+
+/* ── Content ── */
+#content {
+  padding-top: calc(var(--top-h) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 16px);
+  min-height: 100vh;
+}
+
+/* ── Bottom nav ── */
+#bottom-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.nav-btn {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: var(--nav-h);
+  background: none; border: none;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--muted);
+  font-size: 10px; gap: 3px;
+  transition: color .15s;
+  padding: 0;
+}
+.nav-btn.active { color: var(--accent); }
+.nav-btn .icon { font-size: 21px; line-height: 1; }
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 0 14px 12px;
+}
+.card-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--muted);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.card h3 {
+  font-size: 17px; font-weight: 600;
+  line-height: 1.45; margin-bottom: 6px;
+}
+.card .card-sub {
+  font-size: 14px; color: var(--text);
+  line-height: 1.65; margin-bottom: 8px;
+}
+.card .card-source { font-size: 12px; color: var(--muted); }
+
+/* ── Diary list ── */
+.diary-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--card);
+  transition: background .1s;
+}
+.diary-item:first-child { border-top: 1px solid var(--border); }
+.diary-item:active { background: var(--bg2); }
+.diary-day {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  background: var(--accent); color: white;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; line-height: 1.1;
+  text-align: center;
+}
+.diary-item-body { flex: 1; min-width: 0; }
+.diary-item-date { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.diary-item-text {
+  font-size: 14px; line-height: 1.55; color: var(--text);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: block;
+  width: calc(100% - 28px);
+  margin: 12px 14px;
+  padding: 15px;
+  background: var(--accent); color: white;
+  border: none; border-radius: var(--radius);
+  font-size: 15px; font-family: var(--font); font-weight: 600;
+  cursor: pointer; text-align: center;
+  transition: opacity .15s;
+}
+.btn-primary:active { opacity: .8; }
+.btn-secondary {
+  display: inline-block;
+  padding: 9px 16px;
+  background: var(--bg2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-size: 14px; font-family: var(--font);
+  cursor: pointer; transition: background .1s;
+  text-decoration: none;
+}
+.btn-secondary:active { background: var(--border); }
+.btn-danger {
+  display: inline-block;
+  padding: 9px 16px;
+  background: #fdf0f0; color: var(--danger);
+  border: 1px solid #f0d0d0; border-radius: 8px;
+  font-size: 14px; font-family: var(--font); cursor: pointer;
+}
+.btn-danger:active { background: #f5e0e0; }
+
+/* ── Modal ── */
+#modal {
+  position: fixed; inset: 0;
+  z-index: 200;
+  display: none; flex-direction: column;
+  background: var(--bg);
+}
+#modal.open { display: flex; }
+#modal-header {
+  display: flex; align-items: center;
+  height: calc(var(--top-h) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: 8px; padding-right: 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg); flex-shrink: 0;
+  gap: 4px;
+}
+#modal-back {
+  background: none; border: none;
+  font-size: 15px; color: var(--accent);
+  cursor: pointer; padding: 8px 6px;
+  font-family: var(--font);
+  white-space: nowrap; flex-shrink: 0;
+}
+#modal-title {
+  flex: 1; font-size: 15px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#modal-action {
+  display: none;
+  background: none; border: none;
+  color: var(--accent); font-size: 15px; font-weight: 600;
+  font-family: var(--font); cursor: pointer;
+  padding: 8px 0 8px 8px; flex-shrink: 0;
+}
+#modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 20px 14px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Detail ── */
+.detail-section { margin-bottom: 22px; }
+.detail-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--muted);
+  margin-bottom: 6px; font-weight: 600;
+}
+.detail-text {
+  font-size: 16px; line-height: 1.85; color: var(--text);
+  word-break: break-word;
+}
+.detail-day {
+  font-size: 30px; font-weight: 700;
+  color: var(--accent); margin-bottom: 4px;
+}
+.detail-date { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+
+/* ── Tags ── */
+.tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.tag {
+  display: inline-block;
+  padding: 5px 12px;
+  background: var(--accent-light); color: var(--accent);
+  border-radius: 14px; font-size: 13px;
+  cursor: pointer; transition: background .1s;
+}
+.tag:active { background: #ccddd8; }
+
+/* ── Collapsible ── */
+.collapsible-trigger {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; padding: 13px 0;
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+.collapsible-trigger span:first-child { font-size: 14px; color: var(--muted); font-weight: 600; }
+.collapsible-trigger .arrow { font-size: 11px; color: var(--muted); }
+.collapsible-body { display: none; padding-bottom: 8px; }
+.collapsible-body.open { display: block; }
+
+/* ── Form ── */
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block; font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: uppercase;
+  letter-spacing: .07em; margin-bottom: 7px;
+}
+.form-input, .form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px; font-family: var(--font);
+  background: var(--card); color: var(--text);
+  outline: none; transition: border-color .15s;
+  -webkit-appearance: none;
+}
+.form-input:focus, .form-textarea:focus { border-color: var(--accent); }
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.65; }
+.form-hint { font-size: 11px; color: var(--muted); margin-top: 5px; }
+.req { color: var(--danger); }
+
+/* ── Settings ── */
+.settings-section { padding: 0 14px 24px; }
+.settings-title {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  padding: 20px 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--bg2);
+}
+.settings-row-label { font-size: 14px; }
+.settings-row-sub { font-size: 12px; color: var(--muted); }
+
+/* ── Map ── */
+.map-item {
+  padding: 15px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.map-item:first-child { border-top: 1px solid var(--border); }
+.map-concept-name {
+  font-size: 16px; font-weight: 600;
+  color: var(--accent); cursor: pointer; margin-bottom: 4px;
+}
+.map-concept-summary { font-size: 13px; color: var(--muted); margin-bottom: 9px; }
+.map-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.day-chip {
+  display: inline-block;
+  padding: 4px 9px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; font-size: 12px; color: var(--text);
+  cursor: pointer; transition: background .1s;
+}
+.day-chip:active { background: var(--border); }
+
+/* ── Concept stock card (in concept-search modal) ── */
+.concept-highlight {
+  background: var(--accent-light);
+  border-radius: var(--radius);
+  padding: 16px; margin-bottom: 20px;
+}
+.concept-highlight-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--accent);
+  margin-bottom: 6px; font-weight: 600;
+}
+.concept-highlight-name { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+.concept-highlight-summary { font-size: 14px; line-height: 1.6; margin-bottom: 8px; }
+
+/* ── Toast ── */
+#toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 14px);
+  left: 50%; transform: translateX(-50%) translateY(12px);
+  background: #2c2c2c; color: white;
+  padding: 10px 20px; border-radius: 20px;
+  font-size: 13px; opacity: 0;
+  transition: opacity .2s, transform .2s;
+  pointer-events: none; white-space: nowrap;
+  z-index: 300;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Empty state ── */
+.empty-state {
+  text-align: center; padding: 64px 32px; color: var(--muted);
+}
+.empty-icon { font-size: 52px; margin-bottom: 16px; line-height: 1; }
+.empty-state p { font-size: 15px; line-height: 1.7; }
+
+/* ── Misc ── */
+.source-link {
+  color: var(--accent); text-decoration: none;
+  border-bottom: 1px solid var(--accent-light);
+  font-size: 13px; word-break: break-all;
+}
+.source-link:active { opacity: .7; }
+.section-label {
+  padding: 16px 14px 8px;
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.page-gap { height: 10px; }
+.divider { height: 1px; background: var(--border); margin: 0; }
+
+/* ── Dark mode ── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #181818;
+    --bg2: #222222;
+    --card: #272727;
+    --text: #e8e5e0;
+    --muted: #888;
+    --border: #363636;
+    --accent: #7ab5a0;
+    --accent-light: #1c3530;
+  }
+  #toast { background: #e8e5e0; color: #181818; }
+  .concept-highlight { background: var(--accent-light); }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="search-wrap">
+      <input type="search" id="search-input" placeholder="日記・概念を検索…" autocomplete="off" autocorrect="off">
+      <button id="search-clear" aria-label="クリア">✕</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="home">
+      <span class="icon">🏠</span><span>ホーム</span>
+    </button>
+    <button class="nav-btn" data-tab="list">
+      <span class="icon">📋</span><span>一覧</span>
+    </button>
+    <button class="nav-btn" data-tab="map">
+      <span class="icon">🔗</span><span>概念マップ</span>
+    </button>
+    <button class="nav-btn" data-tab="settings">
+      <span class="icon">⚙️</span><span>設定</span>
+    </button>
+  </nav>
+</div>
+
+<div id="modal">
+  <div id="modal-header">
+    <button id="modal-back">← 戻る</button>
+    <div id="modal-title"></div>
+    <button id="modal-action">保存</button>
+  </div>
+  <div id="modal-body"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+'use strict';
+
+// ──────────────────────────────────────────────
+// UTILITIES
+// ──────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const DAY_NAMES = ['日','月','火','水','木','金','土'];
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`;
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function nl2br(s) {
+  return esc(s).replace(/\n/g,'<br>');
+}
+
+function parseRelated(s) {
+  if (!s) return [];
+  return String(s).split(/[,，、\/／]/).map(t => t.trim()).filter(Boolean);
+}
+
+function googleUrl(q) {
+  return 'https://www.google.com/search?q=' + encodeURIComponent(q);
+}
+
+let _toastTimer;
+function showToast(msg, ms = 2200) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ──────────────────────────────────────────────
+// DATA LAYER
+// ──────────────────────────────────────────────
+const DIARY_KEYS   = ['day','date','hikkakari','naze','related','feedback','next','memo'];
+const CONCEPT_KEYS = ['name','summary','trigger','source','experience','registered'];
+
+const DB = {
+  getDiary()        { try { return JSON.parse(localStorage.getItem('hk_diary') || '[]'); } catch { return []; } },
+  setDiary(a)       { localStorage.setItem('hk_diary', JSON.stringify(a)); },
+  getConcepts()     { try { return JSON.parse(localStorage.getItem('hk_concepts') || '[]'); } catch { return []; } },
+  setConcepts(a)    { localStorage.setItem('hk_concepts', JSON.stringify(a)); },
+  nextDayId()       {
+    const d = this.getDiary();
+    return d.length ? Math.max(...d.map(e => Number(e.day) || 0)) + 1 : 1;
+  }
+};
+
+// ──────────────────────────────────────────────
+// CSV
+// ──────────────────────────────────────────────
+function parseCSV(text) {
+  if (typeof Papa !== 'undefined') {
+    const r = Papa.parse(text.trim(), { skipEmptyLines: true });
+    return r.data;
+  }
+  // Fallback parser
+  const rows = [];
+  let i = 0;
+  while (i < text.length) {
+    const cells = [];
+    while (i < text.length) {
+      if (text[i] === '"') {
+        let cell = ''; i++;
+        while (i < text.length) {
+          if (text[i] === '"' && text[i+1] === '"') { cell += '"'; i += 2; }
+          else if (text[i] === '"') { i++; break; }
+          else { cell += text[i++]; }
+        }
+        cells.push(cell);
+        if (text[i] === ',') i++;
+        else { while (i < text.length && text[i] !== '\n') i++; i++; break; }
+      } else {
+        let cell = '';
+        while (i < text.length && text[i] !== ',' && text[i] !== '\n' && text[i] !== '\r') cell += text[i++];
+        cells.push(cell);
+        if (text[i] === ',') { i++; }
+        else { if (text[i] === '\r') i++; if (text[i] === '\n') i++; break; }
+      }
+    }
+    if (cells.length) rows.push(cells);
+  }
+  return rows;
+}
+
+function rowsToObjects(rows, keys) {
+  if (!rows || rows.length < 2) return { data: [], error: 'データが空またはヘッダーのみです' };
+  const data = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every(c => !String(c).trim())) continue;
+    const obj = {};
+    keys.forEach((k, j) => { obj[k] = String(row[j] || '').trim(); });
+    data.push(obj);
+  }
+  return { data, error: null };
+}
+
+function buildCSV(keys, data) {
+  const header = keys.join(',');
+  const rows = data.map(item =>
+    keys.map(k => {
+      const v = String(item[k] || '');
+      return (v.includes(',') || v.includes('"') || v.includes('\n'))
+        ? '"' + v.replace(/"/g, '""') + '"'
+        : v;
+    }).join(',')
+  );
+  return header + '\n' + rows.join('\n');
+}
+
+function downloadCSV(filename, csv) {
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ──────────────────────────────────────────────
+// APP STATE
+// ──────────────────────────────────────────────
+const state = {
+  tab: 'home',
+  search: '',
+  randDiary: null,
+  randConcept: null,
+};
+const modalStack = [];
+
+function refreshRandom() {
+  const diary = DB.getDiary();
+  const concepts = DB.getConcepts();
+  state.randDiary    = diary.length    ? diary[Math.floor(Math.random() * diary.length)]    : null;
+  state.randConcept  = concepts.length ? concepts[Math.floor(Math.random() * concepts.length)] : null;
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  state.search = '';
+  $('search-input').value = '';
+  $('search-clear').style.display = 'none';
+  document.querySelectorAll('.nav-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
+  render();
+}
+
+// ──────────────────────────────────────────────
+// MODAL
+// ──────────────────────────────────────────────
+function openModal(type, data) {
+  modalStack.push({ type, data: data || {} });
+  applyModal();
+  $('modal').classList.add('open');
+}
+
+function closeModal() {
+  modalStack.pop();
+  if (modalStack.length > 0) {
+    applyModal();
+  } else {
+    $('modal').classList.remove('open');
+    render(); // refresh underlying content
+  }
+}
+
+function resetAndCloseModal() {
+  modalStack.length = 0;
+  $('modal').classList.remove('open');
+  render();
+}
+
+function applyModal() {
+  const { type, data } = modalStack[modalStack.length - 1];
+  const titleEl  = $('modal-title');
+  const bodyEl   = $('modal-body');
+  const actionEl = $('modal-action');
+  actionEl.style.display = 'none';
+  actionEl.onclick = null;
+  bodyEl.scrollTop = 0;
+
+  switch (type) {
+    case 'diary-detail':   renderDiaryDetail(data.day, titleEl, bodyEl); break;
+    case 'concept-detail': renderConceptDetail(data.name, titleEl, bodyEl); break;
+    case 'concept-search': renderConceptSearch(data.concept, titleEl, bodyEl); break;
+    case 'add-diary':      renderAddDiaryForm(titleEl, bodyEl, actionEl); break;
+    case 'edit-diary':     renderEditDiaryForm(data.day, titleEl, bodyEl, actionEl); break;
+    case 'add-concept':    renderAddConceptForm(titleEl, bodyEl, actionEl); break;
+  }
+}
+
+// ──────────────────────────────────────────────
+// RENDER – HOME
+// ──────────────────────────────────────────────
+function renderHome() {
+  const diary    = DB.getDiary();
+  const concepts = DB.getConcepts();
+  if (!diary.length && !concepts.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">📔</div>
+        <p>データがありません。<br>設定タブからCSVをインポートするか、<br>最初の引っかかりを書いてみましょう。</p>
+      </div>
+      <button class="btn-primary" data-action="add-diary">今日の引っかかりを書く ✏️</button>`;
+  }
+
+  let html = '<div class="page-gap"></div>';
+
+  if (state.randConcept) {
+    const c = state.randConcept;
+    html += `
+      <div class="card">
+        <div class="card-label">先人の知恵</div>
+        <h3>${esc(c.name)}</h3>
+        <div class="card-sub">${esc(c.summary)}</div>
+        ${c.source ? `<div class="card-source">出典: <a href="${esc(googleUrl(c.source))}" target="_blank" rel="noopener" class="source-link">${esc(c.source)}</a></div>` : ''}
+      </div>`;
+  }
+
+  if (state.randDiary) {
+    const e = state.randDiary;
+    html += `
+      <div class="card" style="cursor:pointer" data-action="open-diary" data-day="${esc(e.day)}">
+        <div class="card-label">過去の引っかかり</div>
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px">
+          <div class="diary-day" style="width:34px;height:34px;font-size:11px">D${esc(e.day)}</div>
+          <div style="font-size:12px;color:var(--muted)">${esc(e.date)}</div>
+        </div>
+        <div style="font-size:14px;line-height:1.65;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(e.hikkakari)}</div>
+      </div>`;
+  }
+
+  html += `<button class="btn-primary" data-action="add-diary">今日の引っかかりを書く ✏️</button>`;
+  return html;
+}
+
+// ──────────────────────────────────────────────
+// RENDER – LIST
+// ──────────────────────────────────────────────
+function renderList() {
+  const sorted = [...DB.getDiary()].sort((a, b) => Number(b.day) - Number(a.day));
+  if (!sorted.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>日記がありません。<br>CSVをインポートするか、<br>書き始めましょう。</p>
+      </div>
+      <button class="btn-primary" data-action="add-diary">今日の引っかかりを書く ✏️</button>`;
+  }
+
+  const items = sorted.map(e => `
+    <div class="diary-item" data-action="open-diary" data-day="${esc(e.day)}">
+      <div class="diary-day">D${esc(e.day)}</div>
+      <div class="diary-item-body">
+        <div class="diary-item-date">${esc(e.date)}</div>
+        <div class="diary-item-text">${esc(e.hikkakari)}</div>
+      </div>
+    </div>`).join('');
+
+  return `<div class="page-gap"></div>${items}<div style="height:8px"></div>
+    <button class="btn-primary" data-action="add-diary">今日の引っかかりを書く ✏️</button>`;
+}
+
+// ──────────────────────────────────────────────
+// RENDER – MAP
+// ──────────────────────────────────────────────
+function renderMap() {
+  const diary    = DB.getDiary();
+  const concepts = DB.getConcepts();
+
+  // Build concept name → {summary, days[]}
+  const map = {};
+  concepts.forEach(c => {
+    if (!map[c.name]) map[c.name] = { summary: c.summary || '', days: [] };
+    else if (!map[c.name].summary) map[c.name].summary = c.summary || '';
+  });
+  diary.forEach(e => {
+    parseRelated(e.related).forEach(tag => {
+      if (!map[tag]) map[tag] = { summary: '', days: [] };
+      if (!map[tag].days.includes(String(e.day))) map[tag].days.push(String(e.day));
+    });
+  });
+
+  const names = Object.keys(map).sort((a, b) => a.localeCompare(b, 'ja'));
+  if (!names.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">🔗</div>
+        <p>まだ概念がありません。<br>日記の「関連概念」欄に概念名を入力するか、<br>設定タブで概念を追加してください。</p>
+      </div>`;
+  }
+
+  const inStock = new Set(concepts.map(c => c.name));
+  const items = names.map(name => {
+    const item = map[name];
+    const chips = item.days.length
+      ? item.days.map(d => `<span class="day-chip" data-action="open-diary" data-day="${esc(d)}">Day ${esc(d)}</span>`).join('')
+      : `<span style="font-size:12px;color:var(--muted)">日記での登場なし</span>`;
+    const action = inStock.has(name) ? 'open-concept' : 'concept-search';
+    return `
+      <div class="map-item">
+        <div class="map-concept-name" data-action="${action}" data-concept="${esc(name)}">${esc(name)}</div>
+        ${item.summary ? `<div class="map-concept-summary">${esc(item.summary)}</div>` : ''}
+        <div class="map-days">${chips}</div>
+      </div>`;
+  }).join('');
+
+  return `<div class="page-gap"></div>${items}`;
+}
+
+// ──────────────────────────────────────────────
+// RENDER – SETTINGS
+// ──────────────────────────────────────────────
+function renderSettings() {
+  const dc = DB.getDiary().length;
+  const cc = DB.getConcepts().length;
+  return `
+    <div class="settings-section">
+      <div class="settings-title">データ状況</div>
+      <div class="settings-row">
+        <span class="settings-row-label">引っかかり日記</span>
+        <span class="settings-row-sub">${dc} 件</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">概念ストック</span>
+        <span class="settings-row-sub">${cc} 件</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">CSVインポート（全置換）</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.65">
+        1行目はヘッダーとしてスキップされます。インポートすると既存データは全て置き換わります。
+      </p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer">
+            📥 日記 CSV をインポート
+            <input type="file" id="import-diary-file" accept=".csv" style="display:none">
+          </label>
+          <div class="form-hint" style="margin-top:5px;padding:0 2px">列順: day, date, hikkakari, naze, related, feedback, next, memo</div>
+        </div>
+        <div>
+          <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer">
+            📥 概念 CSV をインポート
+            <input type="file" id="import-concept-file" accept=".csv" style="display:none">
+          </label>
+          <div class="form-hint" style="margin-top:5px;padding:0 2px">列順: name, summary, trigger, source, experience, registered</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">CSVエクスポート</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-secondary" data-action="export-diary">📤 日記をエクスポート</button>
+        <button class="btn-secondary" data-action="export-concepts">📤 概念をエクスポート</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">新規追加</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-secondary" data-action="add-diary">✏️ 日記を書く</button>
+        <button class="btn-secondary" data-action="add-concept">💡 概念を追加</button>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-title">データのリセット</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.6">削除前にエクスポートしてください。</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-danger" data-action="reset-diary">日記を全削除</button>
+        <button class="btn-danger" data-action="reset-concepts">概念を全削除</button>
+      </div>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// RENDER – SEARCH
+// ──────────────────────────────────────────────
+function renderSearch(q) {
+  const ql = q.toLowerCase();
+  const diary    = DB.getDiary();
+  const concepts = DB.getConcepts();
+
+  const matchDiary = diary
+    .filter(e => DIARY_KEYS.some(k => (e[k]||'').toLowerCase().includes(ql)))
+    .sort((a,b) => Number(b.day) - Number(a.day));
+
+  const matchConcept = concepts
+    .filter(c => CONCEPT_KEYS.some(k => (c[k]||'').toLowerCase().includes(ql)));
+
+  if (!matchDiary.length && !matchConcept.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <p>「${esc(q)}」に一致するデータが<br>見つかりません。</p>
+      </div>`;
+  }
+
+  let html = '<div class="page-gap"></div>';
+
+  if (matchDiary.length) {
+    html += `<div class="section-label">日記 (${matchDiary.length}件)</div>`;
+    html += matchDiary.map(e => `
+      <div class="diary-item" data-action="open-diary" data-day="${esc(e.day)}">
+        <div class="diary-day">D${esc(e.day)}</div>
+        <div class="diary-item-body">
+          <div class="diary-item-date">${esc(e.date)}</div>
+          <div class="diary-item-text">${esc(e.hikkakari)}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  if (matchConcept.length) {
+    html += `<div class="section-label" style="margin-top:${matchDiary.length?'16px':'0'}">概念 (${matchConcept.length}件)</div>`;
+    html += matchConcept.map(c => `
+      <div class="map-item" style="cursor:pointer" data-action="open-concept" data-concept="${esc(c.name)}">
+        <div class="map-concept-name">${esc(c.name)}</div>
+        <div class="map-concept-summary">${esc(c.summary)}</div>
+        ${c.source ? `<div style="font-size:12px;color:var(--muted)">${esc(c.source)}</div>` : ''}
+      </div>`).join('');
+  }
+
+  return html;
+}
+
+// ──────────────────────────────────────────────
+// MAIN RENDER
+// ──────────────────────────────────────────────
+function render() {
+  const el = $('content');
+  const q  = state.search.trim();
+  if (q) { el.innerHTML = renderSearch(q); return; }
+
+  switch (state.tab) {
+    case 'home':     el.innerHTML = renderHome(); break;
+    case 'list':     el.innerHTML = renderList(); break;
+    case 'map':      el.innerHTML = renderMap(); break;
+    case 'settings': el.innerHTML = renderSettings(); bindSettingsFiles(); break;
+    default:         el.innerHTML = renderHome();
+  }
+}
+
+function bindSettingsFiles() {
+  const df = $('import-diary-file');
+  const cf = $('import-concept-file');
+  if (df) df.addEventListener('change', e => handleImport(e, 'diary'));
+  if (cf) cf.addEventListener('change', e => handleImport(e, 'concept'));
+}
+
+// ──────────────────────────────────────────────
+// MODAL CONTENT – DIARY DETAIL
+// ──────────────────────────────────────────────
+function renderDiaryDetail(day, titleEl, bodyEl) {
+  const entry = DB.getDiary().find(d => String(d.day) === String(day));
+  if (!entry) {
+    titleEl.textContent = 'Not found';
+    bodyEl.innerHTML = '<p style="color:var(--muted);padding:20px">エントリが見つかりません。</p>';
+    return;
+  }
+  titleEl.textContent = `Day ${entry.day}`;
+
+  const concepts = DB.getConcepts();
+  const relTags  = parseRelated(entry.related);
+  const sources  = relTags.flatMap(tag => {
+    const c = concepts.find(x => x.name === tag);
+    return (c && c.source) ? [{ tag, source: c.source }] : [];
+  });
+
+  const tagsHtml = relTags.length
+    ? `<div class="tag-list">${relTags.map(t =>
+        `<span class="tag" data-action="concept-search" data-concept="${esc(t)}">${esc(t)}</span>`
+      ).join('')}</div>`
+    : '<span style="color:var(--muted);font-size:14px">—</span>';
+
+  bodyEl.innerHTML = `
+    <div class="detail-day">Day ${esc(entry.day)}</div>
+    <div class="detail-date">${esc(entry.date)}</div>
+
+    <div class="detail-section">
+      <div class="detail-label">引っかかり</div>
+      <div class="detail-text">${nl2br(entry.hikkakari)}</div>
+    </div>
+
+    ${entry.naze ? `
+    <div class="detail-section">
+      <div class="detail-label">なぜ引っかかったか</div>
+      <div class="detail-text">${nl2br(entry.naze)}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-label">関連概念</div>
+      ${tagsHtml}
+    </div>
+
+    ${entry.feedback ? `
+    <div class="detail-section">
+      <div class="detail-label">フィードバック要約</div>
+      <div class="detail-text">${nl2br(entry.feedback)}</div>
+    </div>` : ''}
+
+    ${sources.length ? `
+    <div class="detail-section">
+      <div class="detail-label">出典</div>
+      ${sources.map(s => `
+        <div style="margin-bottom:7px">
+          <span style="font-size:13px;color:var(--muted)">${esc(s.tag)}: </span>
+          <a href="${esc(googleUrl(s.source))}" target="_blank" rel="noopener" class="source-link">${esc(s.source)}</a>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="collapsible-trigger" data-toggle="extras">
+      <span>次のアクション・備考</span>
+      <span class="arrow" id="extras-arrow">▼</span>
+    </div>
+    <div class="collapsible-body" id="extras">
+      ${entry.next ? `
+        <div class="detail-section" style="margin-top:14px">
+          <div class="detail-label">次に試すこと</div>
+          <div class="detail-text">${nl2br(entry.next)}</div>
+        </div>` : ''}
+      ${entry.memo ? `
+        <div class="detail-section">
+          <div class="detail-label">備考</div>
+          <div class="detail-text">${nl2br(entry.memo)}</div>
+        </div>` : ''}
+      ${!entry.next && !entry.memo
+        ? '<p style="color:var(--muted);font-size:14px;margin-top:14px">なし</p>' : ''}
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:10px">
+      <button class="btn-secondary" data-action="edit-diary" data-day="${esc(entry.day)}">✏️ 編集</button>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// MODAL CONTENT – CONCEPT DETAIL
+// ──────────────────────────────────────────────
+function renderConceptDetail(name, titleEl, bodyEl) {
+  const concept = DB.getConcepts().find(c => c.name === name);
+  titleEl.textContent = name;
+
+  if (!concept) {
+    bodyEl.innerHTML = `
+      <p style="color:var(--muted);font-size:14px;margin-bottom:16px">概念ストックに登録されていません。</p>
+      <a href="${esc(googleUrl(name))}" target="_blank" rel="noopener" class="btn-secondary">Webで検索</a>`;
+    return;
+  }
+
+  bodyEl.innerHTML = `
+    ${concept.summary ? `
+    <div class="detail-section">
+      <div class="detail-label">一行で言うと</div>
+      <div class="detail-text">${nl2br(concept.summary)}</div>
+    </div>` : ''}
+
+    ${concept.trigger ? `
+    <div class="detail-section">
+      <div class="detail-label">発動する場面</div>
+      <div class="detail-text">${nl2br(concept.trigger)}</div>
+    </div>` : ''}
+
+    ${concept.source ? `
+    <div class="detail-section">
+      <div class="detail-label">出典</div>
+      <a href="${esc(googleUrl(concept.source))}" target="_blank" rel="noopener" class="source-link" style="font-size:15px">${esc(concept.source)}</a>
+    </div>` : ''}
+
+    ${concept.experience ? `
+    <div class="detail-section">
+      <div class="detail-label">自分の体験との接点</div>
+      <div class="detail-text">${nl2br(concept.experience)}</div>
+    </div>` : ''}
+
+    ${concept.registered ? `<div style="font-size:12px;color:var(--muted);margin-top:4px">登録日: ${esc(concept.registered)}</div>` : ''}
+
+    <div style="margin-top:24px">
+      <a href="${esc(googleUrl(name))}" target="_blank" rel="noopener" class="btn-secondary">Webで検索</a>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// MODAL CONTENT – CONCEPT SEARCH (CHAIN)
+// ──────────────────────────────────────────────
+function renderConceptSearch(conceptName, titleEl, bodyEl) {
+  titleEl.textContent = `「${conceptName}」の連鎖`;
+
+  const diary   = DB.getDiary();
+  const concept = DB.getConcepts().find(c => c.name === conceptName);
+
+  const related = diary
+    .filter(e => parseRelated(e.related).includes(conceptName))
+    .sort((a, b) => Number(b.day) - Number(a.day));
+
+  let html = '';
+
+  if (concept) {
+    html += `
+      <div class="concept-highlight">
+        <div class="concept-highlight-label">概念ストック</div>
+        <div class="concept-highlight-name">${esc(concept.name)}</div>
+        <div class="concept-highlight-summary">${esc(concept.summary)}</div>
+        ${concept.source ? `<a href="${esc(googleUrl(concept.source))}" target="_blank" rel="noopener" class="source-link">${esc(concept.source)}</a>` : ''}
+      </div>`;
+  }
+
+  if (related.length) {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">登場する日記 (${related.length}件)</div>`;
+    html += related.map(e => `
+      <div class="diary-item" style="border-radius:8px;margin-bottom:2px" data-action="open-diary" data-day="${esc(e.day)}">
+        <div class="diary-day">D${esc(e.day)}</div>
+        <div class="diary-item-body">
+          <div class="diary-item-date">${esc(e.date)}</div>
+          <div class="diary-item-text">${esc(e.hikkakari)}</div>
+        </div>
+      </div>`).join('');
+  } else if (!concept) {
+    html = `
+      <p style="color:var(--muted);font-size:15px;margin-bottom:16px">関連するデータが見つかりません。</p>
+      <a href="${esc(googleUrl(conceptName))}" target="_blank" rel="noopener" class="btn-secondary">Webで検索</a>`;
+  } else {
+    html += `<p style="color:var(--muted);font-size:14px">この概念が登場する日記はまだありません。</p>`;
+  }
+
+  bodyEl.innerHTML = html;
+}
+
+// ──────────────────────────────────────────────
+// FORMS – ADD DIARY
+// ──────────────────────────────────────────────
+function renderAddDiaryForm(titleEl, bodyEl, actionEl) {
+  titleEl.textContent = '引っかかりを書く';
+  actionEl.style.display = 'block';
+  actionEl.onclick = submitAddDiary;
+
+  bodyEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Day番号</label>
+        <input type="number" id="f-day" class="form-input" value="${DB.nextDayId()}" min="1">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">日付</label>
+        <input type="text" id="f-date" class="form-input" value="${todayStr()}">
+      </div>
+    </div>
+    <div style="height:20px"></div>
+    <div class="form-group">
+      <label class="form-label">引っかかり <span class="req">*</span></label>
+      <textarea id="f-hikkakari" class="form-textarea" rows="4" placeholder="何が引っかかった？"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">なぜ引っかかったか</label>
+      <textarea id="f-naze" class="form-textarea" rows="3" placeholder="どこが気になった？"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">関連概念</label>
+      <input type="text" id="f-related" class="form-input" placeholder="例: 認知的不協和, スキーマ">
+      <div class="form-hint">カンマ・スラッシュ区切り</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">フィードバック要約</label>
+      <textarea id="f-feedback" class="form-textarea" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">次に試すこと</label>
+      <textarea id="f-next" class="form-textarea" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea id="f-memo" class="form-textarea" rows="2"></textarea>
+    </div>`;
+}
+
+function submitAddDiary() {
+  const hikkakari = ($('f-hikkakari') || {}).value?.trim();
+  if (!hikkakari) { showToast('「引っかかり」は必須です'); return; }
+
+  const entry = {
+    day:       ($('f-day')?.value || '').trim() || String(DB.nextDayId()),
+    date:      ($('f-date')?.value || '').trim() || todayStr(),
+    hikkakari,
+    naze:      ($('f-naze')?.value || '').trim(),
+    related:   ($('f-related')?.value || '').trim(),
+    feedback:  ($('f-feedback')?.value || '').trim(),
+    next:      ($('f-next')?.value || '').trim(),
+    memo:      ($('f-memo')?.value || '').trim(),
+  };
+
+  const diary = DB.getDiary();
+  diary.push(entry);
+  DB.setDiary(diary);
+  refreshRandom();
+  resetAndCloseModal();
+  showToast('保存しました');
+}
+
+// ──────────────────────────────────────────────
+// FORMS – EDIT DIARY
+// ──────────────────────────────────────────────
+function renderEditDiaryForm(day, titleEl, bodyEl, actionEl) {
+  const entry = DB.getDiary().find(d => String(d.day) === String(day));
+  if (!entry) return;
+
+  titleEl.textContent = `Day ${entry.day} を編集`;
+  actionEl.style.display = 'block';
+  actionEl.onclick = () => submitEditDiary(day);
+
+  bodyEl.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Day番号</label>
+        <input type="number" id="f-day" class="form-input" value="${esc(entry.day)}" min="1">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">日付</label>
+        <input type="text" id="f-date" class="form-input" value="${esc(entry.date)}">
+      </div>
+    </div>
+    <div style="height:20px"></div>
+    <div class="form-group">
+      <label class="form-label">引っかかり</label>
+      <textarea id="f-hikkakari" class="form-textarea" rows="4">${esc(entry.hikkakari)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">なぜ引っかかったか</label>
+      <textarea id="f-naze" class="form-textarea" rows="3">${esc(entry.naze)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">関連概念</label>
+      <input type="text" id="f-related" class="form-input" value="${esc(entry.related)}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">フィードバック要約</label>
+      <textarea id="f-feedback" class="form-textarea" rows="2">${esc(entry.feedback)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">次に試すこと</label>
+      <textarea id="f-next" class="form-textarea" rows="2">${esc(entry.next)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">備考</label>
+      <textarea id="f-memo" class="form-textarea" rows="2">${esc(entry.memo)}</textarea>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn-danger" data-action="delete-diary" data-day="${esc(day)}">🗑 このエントリを削除</button>
+    </div>`;
+}
+
+function submitEditDiary(originalDay) {
+  const diary = DB.getDiary();
+  const idx = diary.findIndex(d => String(d.day) === String(originalDay));
+  if (idx === -1) return;
+
+  diary[idx] = {
+    day:      ($('f-day')?.value || '').trim() || String(originalDay),
+    date:     ($('f-date')?.value || '').trim(),
+    hikkakari:($('f-hikkakari')?.value || '').trim(),
+    naze:     ($('f-naze')?.value || '').trim(),
+    related:  ($('f-related')?.value || '').trim(),
+    feedback: ($('f-feedback')?.value || '').trim(),
+    next:     ($('f-next')?.value || '').trim(),
+    memo:     ($('f-memo')?.value || '').trim(),
+  };
+
+  DB.setDiary(diary);
+  refreshRandom();
+  resetAndCloseModal();
+  showToast('更新しました');
+}
+
+// ──────────────────────────────────────────────
+// FORMS – ADD CONCEPT
+// ──────────────────────────────────────────────
+function renderAddConceptForm(titleEl, bodyEl, actionEl) {
+  titleEl.textContent = '概念を追加';
+  actionEl.style.display = 'block';
+  actionEl.onclick = submitAddConcept;
+
+  bodyEl.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">概念名 <span class="req">*</span></label>
+      <input type="text" id="c-name" class="form-input" placeholder="例: 認知的不協和">
+    </div>
+    <div class="form-group">
+      <label class="form-label">一行で言うと</label>
+      <input type="text" id="c-summary" class="form-input" placeholder="短く説明">
+    </div>
+    <div class="form-group">
+      <label class="form-label">発動する場面</label>
+      <textarea id="c-trigger" class="form-textarea" rows="2" placeholder="どんな時に使える？"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出典（人物名・書名）</label>
+      <input type="text" id="c-source" class="form-input" placeholder="例: レオン・フェスティンガー『認知的不協和の理論』">
+    </div>
+    <div class="form-group">
+      <label class="form-label">自分の体験との接点</label>
+      <textarea id="c-experience" class="form-textarea" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">登録日</label>
+      <input type="text" id="c-registered" class="form-input" value="${todayStr()}">
+    </div>`;
+}
+
+function submitAddConcept() {
+  const name = ($('c-name') || {}).value?.trim();
+  if (!name) { showToast('「概念名」は必須です'); return; }
+
+  const concept = {
+    name,
+    summary:    ($('c-summary')?.value || '').trim(),
+    trigger:    ($('c-trigger')?.value || '').trim(),
+    source:     ($('c-source')?.value || '').trim(),
+    experience: ($('c-experience')?.value || '').trim(),
+    registered: ($('c-registered')?.value || '').trim() || todayStr(),
+  };
+
+  const concepts = DB.getConcepts();
+  concepts.push(concept);
+  DB.setConcepts(concepts);
+  refreshRandom();
+  resetAndCloseModal();
+  showToast('概念を保存しました');
+}
+
+// ──────────────────────────────────────────────
+// CSV IMPORT
+// ──────────────────────────────────────────────
+function handleImport(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const keys  = type === 'diary' ? DIARY_KEYS : CONCEPT_KEYS;
+  const label = type === 'diary' ? '日記' : '概念';
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      const { data, error } = rowsToObjects(rows, keys);
+
+      if (error || !data.length) {
+        showToast(error || `${label}データが空です`);
+        event.target.value = '';
+        return;
+      }
+
+      if (!confirm(`${label}データを ${data.length} 件インポートします。既存データは全て削除されます。よろしいですか？`)) {
+        event.target.value = '';
+        return;
+      }
+
+      if (type === 'diary') DB.setDiary(data);
+      else DB.setConcepts(data);
+
+      refreshRandom();
+      render();
+      showToast(`${label}データを ${data.length} 件インポートしました`);
+    } catch (err) {
+      console.error('Import error:', err);
+      showToast('CSVの読み込みに失敗しました');
+    }
+    event.target.value = '';
+  };
+  reader.onerror = () => showToast('ファイルの読み込みに失敗しました');
+  reader.readAsText(file, 'UTF-8');
+}
+
+// ──────────────────────────────────────────────
+// EVENT DELEGATION
+// ──────────────────────────────────────────────
+document.addEventListener('click', e => {
+  // Collapsible
+  const trigger = e.target.closest('.collapsible-trigger');
+  if (trigger) {
+    const body  = trigger.nextElementSibling;
+    const arrow = trigger.querySelector('.arrow');
+    if (body) {
+      const open = body.classList.toggle('open');
+      if (arrow) arrow.textContent = open ? '▲' : '▼';
+    }
+    return;
+  }
+
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+
+  const { action, day, concept } = btn.dataset;
+
+  switch (action) {
+    case 'open-diary':      openModal('diary-detail',   { day }); break;
+    case 'open-concept':    openModal('concept-detail', { name: concept }); break;
+    case 'concept-search':  openModal('concept-search', { concept }); break;
+    case 'add-diary':       openModal('add-diary'); break;
+    case 'add-concept':     openModal('add-concept'); break;
+    case 'edit-diary':      openModal('edit-diary', { day }); break;
+
+    case 'delete-diary': {
+      if (confirm(`Day ${day} を削除しますか？`)) {
+        DB.setDiary(DB.getDiary().filter(d => String(d.day) !== String(day)));
+        refreshRandom();
+        resetAndCloseModal();
+        showToast('削除しました');
+      }
+      break;
+    }
+    case 'export-diary': {
+      const d = DB.getDiary();
+      if (!d.length) { showToast('日記データがありません'); return; }
+      downloadCSV('hikkakari-diary.csv', buildCSV(DIARY_KEYS, d));
+      showToast('エクスポートしました');
+      break;
+    }
+    case 'export-concepts': {
+      const c = DB.getConcepts();
+      if (!c.length) { showToast('概念データがありません'); return; }
+      downloadCSV('hikkakari-concepts.csv', buildCSV(CONCEPT_KEYS, c));
+      showToast('エクスポートしました');
+      break;
+    }
+    case 'reset-diary': {
+      if (confirm('日記データを全て削除しますか？')) {
+        DB.setDiary([]); refreshRandom(); render();
+        showToast('日記データを削除しました');
+      }
+      break;
+    }
+    case 'reset-concepts': {
+      if (confirm('概念データを全て削除しますか？')) {
+        DB.setConcepts([]); refreshRandom(); render();
+        showToast('概念データを削除しました');
+      }
+      break;
+    }
+  }
+});
+
+// Bottom nav
+document.querySelectorAll('.nav-btn').forEach(b =>
+  b.addEventListener('click', () => setTab(b.dataset.tab))
+);
+
+// Modal back
+$('modal-back').addEventListener('click', closeModal);
+
+// Search
+const searchInput = $('search-input');
+const searchClear = $('search-clear');
+
+searchInput.addEventListener('input', () => {
+  state.search = searchInput.value;
+  searchClear.style.display = state.search ? 'block' : 'none';
+  render();
+});
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  state.search = '';
+  searchClear.style.display = 'none';
+  render();
+});
+
+// ──────────────────────────────────────────────
+// PWA – MANIFEST (inline blob)
+// ──────────────────────────────────────────────
+function setupManifest() {
+  const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%235c7a6e'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='56'%3E%F0%9F%93%94%3C/text%3E%3C/svg%3E";
+  const manifest = {
+    name: '引っかかり日記',
+    short_name: '引っかかり',
+    description: '気づきの記録と概念ストック',
+    start_url: './',
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#faf9f7',
+    theme_color: '#5c7a6e',
+    icons: [{ src: icon, sizes: 'any', type: 'image/svg+xml' }]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  $('manifest').href = URL.createObjectURL(blob);
+}
+
+// ──────────────────────────────────────────────
+// PWA – SERVICE WORKER
+// ──────────────────────────────────────────────
+function setupSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+setupManifest();
+setupSW();
+refreshRandom();
+render();
+</script>
+</body>
+</html>
