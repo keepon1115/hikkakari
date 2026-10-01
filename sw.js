@@ -1,4 +1,4 @@
-const CACHE = 'hikkakari-v1';
+const CACHE = 'hikkakari-v2';
 const CORE  = ['./'];
 
 self.addEventListener('install', e => {

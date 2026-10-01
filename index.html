@@ -108,7 +108,7 @@ body {
   cursor: pointer;
   font-family: var(--font);
   color: var(--muted);
-  font-size: 10px; gap: 3px;
+  font-size: 9px; gap: 3px;
   transition: color .15s;
   padding: 0;
 }
@@ -270,9 +270,70 @@ body {
   padding: 5px 12px;
   background: var(--accent-light); color: var(--accent);
   border-radius: 14px; font-size: 13px;
-  cursor: pointer; transition: background .1s;
+  cursor: pointer; transition: background .1s, color .1s;
+  white-space: nowrap;
 }
 .tag:active { background: #ccddd8; }
+.tag.selected { background: var(--accent); color: #fff; }
+
+/* ── Lens (filter chip rows) / person shelf ── */
+.lens-row {
+  display: flex; gap: 6px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 0 14px 10px;
+  scrollbar-width: none;
+}
+.lens-row::-webkit-scrollbar { display: none; }
+.lens-row .tag { flex-shrink: 0; }
+
+/* ── Kotoba (words dictionary) list ── */
+.kotoba-item {
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--card);
+  transition: background .1s;
+}
+.kotoba-item:first-child { border-top: 1px solid var(--border); }
+.kotoba-item:active { background: var(--bg2); }
+.kotoba-item-text {
+  font-size: 14px; line-height: 1.6; color: var(--text);
+  margin-bottom: 8px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.kotoba-item-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kotoba-item-person { font-size: 12px; color: var(--muted); font-weight: 600; }
+.kotoba-badge {
+  display: inline-block;
+  padding: 2px 9px;
+  background: var(--bg2); color: var(--muted);
+  border-radius: 10px; font-size: 11px;
+}
+.kotoba-badge-hook { background: var(--accent-light); color: var(--accent); }
+
+/* ── Kotoba quote (detail) ── */
+.kotoba-quote {
+  font-size: 19px; line-height: 1.9; color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 16px;
+  word-break: break-word;
+}
+
+/* ── Reread log ── */
+.reread-item { padding: 10px 0; border-top: 1px solid var(--border); }
+.reread-item:first-child { border-top: none; }
+.reread-date { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+.reread-note { font-size: 14px; line-height: 1.6; word-break: break-word; }
+
+/* ── Mini stats (self-observation) ── */
+.stat-bar-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.stat-bar-label { flex: 0 0 88px; font-size: 12px; color: var(--muted); }
+.stat-bar-track { flex: 1; height: 6px; background: var(--bg2); border-radius: 3px; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
+.stat-bar-count { flex: 0 0 20px; text-align: right; font-size: 12px; color: var(--muted); }
 
 /* ── Collapsible ── */
 .collapsible-trigger {
@@ -417,7 +478,7 @@ body {
 <div id="app">
   <div id="topbar">
     <div id="search-wrap">
-      <input type="search" id="search-input" placeholder="日記・概念を検索…" autocomplete="off" autocorrect="off">
+      <input type="search" id="search-input" placeholder="日記・概念・言葉を検索…" autocomplete="off" autocorrect="off">
       <button id="search-clear" aria-label="クリア">✕</button>
     </div>
   </div>
@@ -429,7 +490,10 @@ body {
       <span class="icon">🏠</span><span>ホーム</span>
     </button>
     <button class="nav-btn" data-tab="list">
-      <span class="icon">📋</span><span>一覧</span>
+      <span class="icon">📋</span><span>日記</span>
+    </button>
+    <button class="nav-btn" data-tab="kotoba">
+      <span class="icon">💬</span><span>言葉</span>
     </button>
     <button class="nav-btn" data-tab="map">
       <span class="icon">🔗</span><span>概念マップ</span>
@@ -466,6 +530,20 @@ function todayStr() {
   return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`;
 }
 
+// <input type="date"> の値(YYYY-MM-DD)⇔ 保存形式(YYYY/M/D (曜))
+function dateInputToStr(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+  if (!m) return '';
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} (${DAY_NAMES[d.getDay()]})`;
+}
+
+function strToDateInput(s) {
+  const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})/.exec(s || '');
+  if (!m) return '';
+  return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+}
+
 function esc(s) {
   if (s == null) return '';
   return String(s)
@@ -486,6 +564,15 @@ function googleUrl(q) {
   return 'https://www.google.com/search?q=' + encodeURIComponent(q);
 }
 
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
+}
+
+function rereadDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+
 let _toastTimer;
 function showToast(msg, ms = 2200) {
   const el = $('toast');
@@ -500,12 +587,18 @@ function showToast(msg, ms = 2200) {
 // ──────────────────────────────────────────────
 const DIARY_KEYS   = ['day','date','hikkakari','naze','related','feedback','next','memo'];
 const CONCEPT_KEYS = ['name','summary','trigger','source','experience','registered'];
+const KOTOBA_KEYS  = ['id','text','person','source','sourceUrl','media','hooks','note','rereads','registered'];
+
+const MEDIA_TYPES = ['歌詞','インタビュー','動画・発言','書籍・エッセイ','その他'];
+const HOOK_TYPES  = ['気になる','言語化された','違和感'];
 
 const DB = {
   getDiary()        { try { return JSON.parse(localStorage.getItem('hk_diary') || '[]'); } catch { return []; } },
   setDiary(a)       { localStorage.setItem('hk_diary', JSON.stringify(a)); },
   getConcepts()     { try { return JSON.parse(localStorage.getItem('hk_concepts') || '[]'); } catch { return []; } },
   setConcepts(a)    { localStorage.setItem('hk_concepts', JSON.stringify(a)); },
+  getKotoba()       { try { return JSON.parse(localStorage.getItem('hk_kotoba') || '[]'); } catch { return []; } },
+  setKotoba(a)      { localStorage.setItem('hk_kotoba', JSON.stringify(a)); },
   nextDayId()       {
     const d = this.getDiary();
     return d.length ? Math.max(...d.map(e => Number(e.day) || 0)) + 1 : 1;
@@ -575,6 +668,40 @@ function buildCSV(keys, data) {
   return header + '\n' + rows.join('\n');
 }
 
+function kotobaToCSVRow(k) {
+  return {
+    id: k.id,
+    text: k.text,
+    person: k.person,
+    source: k.source,
+    sourceUrl: k.sourceUrl,
+    media: k.media,
+    hooks: (k.hooks || []).join('、'),
+    note: k.note,
+    rereads: (k.rereads || []).map(r => `${r.date}|${r.note}`).join('\n'),
+    registered: k.registered,
+  };
+}
+
+function csvRowToKotoba(row) {
+  return {
+    id: row.id || uid(),
+    text: row.text || '',
+    person: row.person || '',
+    source: row.source || '',
+    sourceUrl: row.sourceUrl || '',
+    media: row.media || '',
+    hooks: row.hooks ? row.hooks.split('、').map(s => s.trim()).filter(Boolean) : [],
+    note: row.note || '',
+    rereads: row.rereads ? row.rereads.split('\n').map(line => {
+      const i = line.indexOf('|');
+      if (i === -1) return null;
+      return { date: line.slice(0, i).trim(), note: line.slice(i + 1).trim() };
+    }).filter(Boolean) : [],
+    registered: row.registered || '',
+  };
+}
+
 function downloadCSV(filename, csv) {
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -591,20 +718,45 @@ const state = {
   search: '',
   randDiary: null,
   randConcept: null,
+  randKotoba: null,
+  crossPair: null,
+  kotobaHookFilter: '',
+  kotobaMediaFilter: '',
 };
 const modalStack = [];
+
+function pickRandomKotoba(excludeId) {
+  const all = DB.getKotoba();
+  if (!all.length) return null;
+  if (all.length === 1) return all[0];
+  let pick;
+  do { pick = all[Math.floor(Math.random() * all.length)]; } while (excludeId && pick.id === excludeId);
+  return pick;
+}
+
+function pickCrossPair() {
+  const kotoba = DB.getKotoba();
+  const diary  = DB.getDiary();
+  state.crossPair = (kotoba.length && diary.length) ? {
+    kotoba: kotoba[Math.floor(Math.random() * kotoba.length)],
+    diary:  diary[Math.floor(Math.random() * diary.length)],
+  } : null;
+}
 
 function refreshRandom() {
   const diary = DB.getDiary();
   const concepts = DB.getConcepts();
   state.randDiary    = diary.length    ? diary[Math.floor(Math.random() * diary.length)]    : null;
   state.randConcept  = concepts.length ? concepts[Math.floor(Math.random() * concepts.length)] : null;
+  state.randKotoba   = pickRandomKotoba();
+  pickCrossPair();
 }
 
 function setTab(tab) {
   state.tab = tab;
   state.search = '';
   $('search-input').value = '';
+  $('search-input').placeholder = tab === 'kotoba' ? '言葉・人物を検索…' : '日記・概念・言葉を検索…';
   $('search-clear').style.display = 'none';
   document.querySelectorAll('.nav-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.tab === tab)
@@ -653,6 +805,10 @@ function applyModal() {
     case 'add-diary':      renderAddDiaryForm(titleEl, bodyEl, actionEl); break;
     case 'edit-diary':     renderEditDiaryForm(data.day, titleEl, bodyEl, actionEl); break;
     case 'add-concept':    renderAddConceptForm(titleEl, bodyEl, actionEl); break;
+    case 'kotoba-detail':  renderKotobaDetail(data.id, titleEl, bodyEl); break;
+    case 'add-kotoba':     renderAddKotobaForm(titleEl, bodyEl, actionEl); break;
+    case 'edit-kotoba':    renderEditKotobaForm(data.id, titleEl, bodyEl, actionEl); break;
+    case 'person-page':    renderPersonPage(data.person, titleEl, bodyEl); break;
   }
 }
 
@@ -694,6 +850,30 @@ function renderHome() {
           <div style="font-size:12px;color:var(--muted)">${esc(e.date)}</div>
         </div>
         <div style="font-size:14px;line-height:1.65;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(e.hikkakari)}</div>
+      </div>`;
+  }
+
+  if (state.randKotoba) {
+    const k = state.randKotoba;
+    html += `
+      <div class="card" style="cursor:pointer" data-action="open-kotoba" data-id="${esc(k.id)}">
+        <div class="card-label">拾った言葉</div>
+        <div class="card-sub" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${esc(k.text)}</div>
+        <div class="card-source">${esc(k.person)}</div>
+      </div>`;
+  }
+
+  if (state.crossPair) {
+    const { kotoba: k, diary: d } = state.crossPair;
+    html += `
+      <div class="card">
+        <div class="card-label">異花受粉</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">この二つ、つながる？</div>
+        <div class="kotoba-quote" style="font-size:14px;line-height:1.7;margin-bottom:6px;cursor:pointer;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical" data-action="open-kotoba" data-id="${esc(k.id)}">${esc(k.text)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px">— ${esc(k.person)}</div>
+        <div style="font-size:14px;line-height:1.6;cursor:pointer;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;border-top:1px solid var(--border);padding-top:12px" data-action="open-diary" data-day="${esc(d.day)}">${esc(d.hikkakari)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">— Day ${esc(d.day)} ${esc(d.date)}</div>
+        <button class="btn-secondary" style="margin-top:14px;font-size:13px;padding:7px 14px" data-action="shuffle-cross">⟳</button>
       </div>`;
   }
 
@@ -776,11 +956,122 @@ function renderMap() {
 }
 
 // ──────────────────────────────────────────────
+// RENDER – KOTOBA (言葉辞典)
+// ──────────────────────────────────────────────
+function renderKotobaShuffleCard(k) {
+  return `
+    <div class="card" style="cursor:pointer" data-action="open-kotoba" data-id="${esc(k.id)}">
+      <div class="card-label">拾った言葉</div>
+      <div class="kotoba-quote" style="font-size:15px;line-height:1.75;margin-bottom:10px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical">${nl2br(k.text)}</div>
+      <div class="card-source">${esc(k.person)}${k.media ? ' ・ ' + esc(k.media) : ''}</div>
+      <button class="btn-secondary" style="margin-top:12px;font-size:13px;padding:7px 14px" data-action="shuffle-kotoba">⟳ 別の言葉に会う</button>
+    </div>`;
+}
+
+function renderKotobaLens() {
+  const hookRow = ['', ...HOOK_TYPES].map(v => `
+    <span class="tag${state.kotobaHookFilter === v ? ' selected' : ''}" data-action="toggle-hook-filter" data-value="${esc(v)}">${v === '' ? 'すべて' : esc(v)}</span>`).join('');
+  const mediaRow = ['', ...MEDIA_TYPES].map(v => `
+    <span class="tag${state.kotobaMediaFilter === v ? ' selected' : ''}" data-action="toggle-media-filter" data-value="${esc(v)}">${v === '' ? 'すべて' : esc(v)}</span>`).join('');
+  return `<div class="lens-row">${hookRow}</div><div class="lens-row">${mediaRow}</div>`;
+}
+
+function renderPersonShelf(all) {
+  const counts = {};
+  all.forEach(k => { if (k.person) counts[k.person] = (counts[k.person] || 0) + 1; });
+  const names = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'ja'));
+  if (!names.length) return '';
+  const chips = names.map(n =>
+    `<span class="tag" data-action="open-person" data-person="${esc(n)}">${esc(n)} (${counts[n]})</span>`
+  ).join('');
+  return `<div class="lens-row">${chips}</div>`;
+}
+
+function filterKotoba(all) {
+  return all.filter(k => {
+    if (state.kotobaHookFilter && !(k.hooks || []).includes(state.kotobaHookFilter)) return false;
+    if (state.kotobaMediaFilter && k.media !== state.kotobaMediaFilter) return false;
+    return true;
+  });
+}
+
+function renderKotobaListItem(k) {
+  return `
+    <div class="kotoba-item" data-action="open-kotoba" data-id="${esc(k.id)}">
+      <div class="kotoba-item-text">${esc(k.text)}</div>
+      <div class="kotoba-item-meta">
+        <span class="kotoba-item-person">${esc(k.person)}</span>
+        ${k.media ? `<span class="kotoba-badge">${esc(k.media)}</span>` : ''}
+        ${(k.hooks || []).map(h => `<span class="kotoba-badge kotoba-badge-hook">${esc(h)}</span>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderKotobaList(list) {
+  if (!list.length) {
+    return `<p style="color:var(--muted);font-size:14px;padding:24px 14px;text-align:center">この条件に一致する言葉はありません。</p>`;
+  }
+  return [...list].reverse().map(renderKotobaListItem).join('');
+}
+
+function renderKotobaStats(all) {
+  if (all.length < 10) return '';
+  const hookCounts = {}; HOOK_TYPES.forEach(h => hookCounts[h] = 0);
+  const mediaCounts = {}; MEDIA_TYPES.forEach(m => mediaCounts[m] = 0);
+  const personCounts = {};
+  all.forEach(k => {
+    (k.hooks || []).forEach(h => { if (hookCounts[h] != null) hookCounts[h]++; });
+    if (k.media && mediaCounts[k.media] != null) mediaCounts[k.media]++;
+    if (k.person) personCounts[k.person] = (personCounts[k.person] || 0) + 1;
+  });
+  const max = Math.max(1, ...Object.values(hookCounts), ...Object.values(mediaCounts));
+  const bar = (label, n) => `
+    <div class="stat-bar-row">
+      <div class="stat-bar-label">${esc(label)}</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(n / max * 100)}%"></div></div>
+      <div class="stat-bar-count">${n}</div>
+    </div>`;
+  const topPersons = Object.entries(personCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  return `
+    <div class="card">
+      <div class="card-label">自分は何に引っかかりやすいか</div>
+      ${HOOK_TYPES.map(h => bar(h, hookCounts[h])).join('')}
+      <div style="height:10px"></div>
+      ${MEDIA_TYPES.map(m => bar(m, mediaCounts[m])).join('')}
+      ${topPersons.length ? `
+        <div style="margin-top:12px;font-size:12px;color:var(--muted)">よく引っかかる人物: ${topPersons.map(([n, c]) => `${esc(n)}(${c})`).join(' / ')}</div>` : ''}
+    </div>`;
+}
+
+function renderKotoba() {
+  const all = DB.getKotoba();
+  if (!all.length) {
+    return `
+      <div class="empty-state">
+        <div class="empty-icon">💬</div>
+        <p>まだ言葉がありません。<br>最初の一語を書き留めましょう。</p>
+      </div>
+      <button class="btn-primary" data-action="add-kotoba">言葉を書き留める ✏️</button>`;
+  }
+
+  let html = '<div class="page-gap"></div>';
+  if (state.randKotoba) html += renderKotobaShuffleCard(state.randKotoba);
+  html += renderKotobaLens();
+  html += renderPersonShelf(all);
+  html += renderKotobaList(filterKotoba(all));
+  html += `<button class="btn-primary" data-action="add-kotoba">言葉を書き留める ✏️</button>`;
+  html += renderKotobaStats(all);
+  return html;
+}
+
+// ──────────────────────────────────────────────
 // RENDER – SETTINGS
 // ──────────────────────────────────────────────
 function renderSettings() {
   const dc = DB.getDiary().length;
   const cc = DB.getConcepts().length;
+  const kc = DB.getKotoba().length;
   return `
     <div class="settings-section">
       <div class="settings-title">データ状況</div>
@@ -791,6 +1082,10 @@ function renderSettings() {
       <div class="settings-row">
         <span class="settings-row-label">概念ストック</span>
         <span class="settings-row-sub">${cc} 件</span>
+      </div>
+      <div class="settings-row">
+        <span class="settings-row-label">言葉辞典</span>
+        <span class="settings-row-sub">${kc} 件</span>
       </div>
     </div>
 
@@ -814,6 +1109,13 @@ function renderSettings() {
           </label>
           <div class="form-hint" style="margin-top:5px;padding:0 2px">列順: name, summary, trigger, source, experience, registered</div>
         </div>
+        <div>
+          <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer">
+            📥 言葉 CSV をインポート
+            <input type="file" id="import-kotoba-file" accept=".csv" style="display:none">
+          </label>
+          <div class="form-hint" style="margin-top:5px;padding:0 2px">列順: id, text, person, source, sourceUrl, media, hooks, note, rereads, registered</div>
+        </div>
       </div>
     </div>
 
@@ -822,6 +1124,7 @@ function renderSettings() {
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn-secondary" data-action="export-diary">📤 日記をエクスポート</button>
         <button class="btn-secondary" data-action="export-concepts">📤 概念をエクスポート</button>
+        <button class="btn-secondary" data-action="export-kotoba">📤 言葉をエクスポート</button>
       </div>
     </div>
 
@@ -830,6 +1133,7 @@ function renderSettings() {
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn-secondary" data-action="add-diary">✏️ 日記を書く</button>
         <button class="btn-secondary" data-action="add-concept">💡 概念を追加</button>
+        <button class="btn-secondary" data-action="add-kotoba">💬 言葉を書き留める</button>
       </div>
     </div>
 
@@ -839,6 +1143,7 @@ function renderSettings() {
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn-danger" data-action="reset-diary">日記を全削除</button>
         <button class="btn-danger" data-action="reset-concepts">概念を全削除</button>
+        <button class="btn-danger" data-action="reset-kotoba">言葉を全削除</button>
       </div>
     </div>`;
 }
@@ -858,7 +1163,12 @@ function renderSearch(q) {
   const matchConcept = concepts
     .filter(c => CONCEPT_KEYS.some(k => (c[k]||'').toLowerCase().includes(ql)));
 
-  if (!matchDiary.length && !matchConcept.length) {
+  const kotoba = DB.getKotoba();
+  const matchKotoba = [...kotoba]
+    .filter(k => [k.text, k.person, k.source, k.note].some(v => (v || '').toLowerCase().includes(ql)))
+    .reverse();
+
+  if (!matchDiary.length && !matchConcept.length && !matchKotoba.length) {
     return `
       <div class="empty-state">
         <div class="empty-icon">🔍</div>
@@ -890,6 +1200,11 @@ function renderSearch(q) {
       </div>`).join('');
   }
 
+  if (matchKotoba.length) {
+    html += `<div class="section-label" style="margin-top:${(matchDiary.length||matchConcept.length)?'16px':'0'}">言葉 (${matchKotoba.length}件)</div>`;
+    html += matchKotoba.map(renderKotobaListItem).join('');
+  }
+
   return html;
 }
 
@@ -904,6 +1219,7 @@ function render() {
   switch (state.tab) {
     case 'home':     el.innerHTML = renderHome(); break;
     case 'list':     el.innerHTML = renderList(); break;
+    case 'kotoba':   el.innerHTML = renderKotoba(); break;
     case 'map':      el.innerHTML = renderMap(); break;
     case 'settings': el.innerHTML = renderSettings(); bindSettingsFiles(); break;
     default:         el.innerHTML = renderHome();
@@ -913,8 +1229,10 @@ function render() {
 function bindSettingsFiles() {
   const df = $('import-diary-file');
   const cf = $('import-concept-file');
+  const kf = $('import-kotoba-file');
   if (df) df.addEventListener('change', e => handleImport(e, 'diary'));
   if (cf) cf.addEventListener('change', e => handleImport(e, 'concept'));
+  if (kf) kf.addEventListener('change', e => handleImport(e, 'kotoba'));
 }
 
 // ──────────────────────────────────────────────
@@ -1295,38 +1613,309 @@ function submitAddConcept() {
 }
 
 // ──────────────────────────────────────────────
+// MODAL CONTENT – KOTOBA DETAIL
+// ──────────────────────────────────────────────
+function renderKotobaDetail(id, titleEl, bodyEl) {
+  const k = DB.getKotoba().find(x => x.id === id);
+  if (!k) {
+    titleEl.textContent = 'Not found';
+    bodyEl.innerHTML = '<p style="color:var(--muted);padding:20px">見つかりません。</p>';
+    return;
+  }
+  titleEl.textContent = k.person || '言葉';
+
+  const badges = `
+    ${k.media ? `<span class="kotoba-badge">${esc(k.media)}</span>` : ''}
+    ${(k.hooks || []).map(h => `<span class="kotoba-badge kotoba-badge-hook">${esc(h)}</span>`).join('')}`;
+
+  const sourceUrl = (k.sourceUrl || '').trim();
+  const isUrl = /^https?:/i.test(sourceUrl);
+  const sourceHtml = isUrl
+    ? `<a href="${esc(sourceUrl)}" target="_blank" rel="noopener" class="source-link">${esc(k.source || sourceUrl)}</a>`
+    : (k.source
+        ? `<span>${esc(k.source)}</span> <a href="${esc(googleUrl((k.person || '') + ' ' + k.source))}" target="_blank" rel="noopener" class="source-link" style="margin-left:6px">🔍 出典を調べる</a>`
+        : `<span style="color:var(--muted);font-size:13px">—</span>`);
+
+  const rereads = k.rereads || [];
+  const rereadsHtml = rereads.map(r => `
+    <div class="reread-item">
+      <div class="reread-date">${esc(r.date)}</div>
+      <div class="reread-note">${nl2br(r.note)}</div>
+    </div>`).join('');
+
+  bodyEl.innerHTML = `
+    <div class="kotoba-quote">${nl2br(k.text)}</div>
+    <div style="margin:14px 0 20px">
+      <span class="tag" data-action="open-person" data-person="${esc(k.person)}">${esc(k.person)}</span>
+    </div>
+
+    ${(k.media || (k.hooks && k.hooks.length)) ? `
+    <div class="detail-section">
+      <div class="tag-list">${badges}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-label">出典</div>
+      ${sourceHtml}
+    </div>
+
+    ${k.note ? `
+    <div class="detail-section">
+      <div class="detail-label">なぜ引っかかったか</div>
+      <div class="detail-text">${nl2br(k.note)}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <div class="detail-label">再読ログ</div>
+      <div id="reread-list">${rereadsHtml}</div>
+      <div id="reread-add-area" style="margin-top:10px">
+        <button class="btn-secondary" style="font-size:13px" data-action="add-reread" data-id="${esc(k.id)}">+ いま読んでどう感じるか、一行</button>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;display:flex;gap:10px">
+      <button class="btn-secondary" data-action="edit-kotoba" data-id="${esc(k.id)}">✏️ 編集</button>
+      <button class="btn-danger" data-action="delete-kotoba" data-id="${esc(k.id)}">🗑 削除</button>
+    </div>`;
+}
+
+// ──────────────────────────────────────────────
+// MODAL CONTENT – PERSON PAGE
+// ──────────────────────────────────────────────
+function renderPersonPage(personName, titleEl, bodyEl) {
+  titleEl.textContent = personName;
+  const items = DB.getKotoba().filter(k => k.person === personName);
+
+  let html = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+      <a href="${esc(googleUrl(personName))}" target="_blank" rel="noopener" class="btn-secondary">🔍 この人を調べる</a>
+      <a href="${esc(googleUrl(personName + ' 経歴 年表'))}" target="_blank" rel="noopener" class="btn-secondary">🔍 経歴・年表を調べる</a>
+    </div>`;
+
+  if (!items.length) {
+    html += `<p style="color:var(--muted);font-size:14px">この人物の言葉はまだありません。</p>`;
+  } else {
+    html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">登録した言葉 (${items.length}件)</div>`;
+    html += items.map(renderKotobaListItem).join('');
+  }
+
+  bodyEl.innerHTML = html;
+}
+
+// ──────────────────────────────────────────────
+// FORMS – ADD / EDIT KOTOBA
+// ──────────────────────────────────────────────
+function mediaChipsHtml(selected, groupId) {
+  return MEDIA_TYPES.map(m =>
+    `<span class="tag${m === selected ? ' selected' : ''}" data-action="toggle-media-chip" data-value="${esc(m)}" data-group="${groupId}">${esc(m)}</span>`
+  ).join('');
+}
+
+function hookChipsHtml(selectedArr, groupId) {
+  return HOOK_TYPES.map(h =>
+    `<span class="tag${(selectedArr || []).includes(h) ? ' selected' : ''}" data-action="toggle-hook-chip" data-value="${esc(h)}" data-group="${groupId}">${esc(h)}</span>`
+  ).join('');
+}
+
+function personSuggestionsHtml(persons) {
+  if (!persons.length) return '';
+  return `<div class="tag-list" style="margin-top:8px">${persons.map(p =>
+    `<span class="tag" data-action="pick-person-suggestion" data-person="${esc(p)}">${esc(p)}</span>`
+  ).join('')}</div>`;
+}
+
+function distinctPersons() {
+  const names = [...new Set(DB.getKotoba().map(k => k.person).filter(Boolean))];
+  return names.sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
+function renderAddKotobaForm(titleEl, bodyEl, actionEl) {
+  titleEl.textContent = '言葉を書き留める';
+  actionEl.style.display = 'block';
+  actionEl.textContent = '保存';
+  actionEl.onclick = submitAddKotoba;
+
+  bodyEl.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">言葉 <span class="req">*</span></label>
+      <textarea id="f-k-text" class="form-textarea" rows="4" placeholder="引っかかった言葉をそのまま"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">人物名 <span class="req">*</span></label>
+      <input type="text" id="f-k-person" class="form-input" placeholder="誰の言葉？">
+      ${personSuggestionsHtml(distinctPersons())}
+    </div>
+    <div class="form-group">
+      <label class="form-label">メディア種別</label>
+      <div id="f-k-media" class="tag-list">${mediaChipsHtml('', 'f-k-media')}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">引っかかり種別</label>
+      <div id="f-k-hooks" class="tag-list">${hookChipsHtml([], 'f-k-hooks')}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出典</label>
+      <input type="text" id="f-k-source" class="form-input" placeholder="曲名・記事名・番組名など">
+    </div>
+    <div class="form-group">
+      <label class="form-label">出典URL</label>
+      <input type="url" id="f-k-source-url" class="form-input" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">なぜ引っかかったか</label>
+      <textarea id="f-k-note" class="form-textarea" rows="3" placeholder="うまく言えなくてもいい。一言でも"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">日付</label>
+      <input type="date" id="f-k-date" class="form-input">
+      <div class="form-hint" style="margin-top:5px;padding:0 2px">空欄なら今日の日付で保存されます</div>
+    </div>`;
+}
+
+function submitAddKotoba() {
+  const text = ($('f-k-text') || {}).value?.trim();
+  const person = ($('f-k-person') || {}).value?.trim();
+  if (!text) { showToast('「言葉」は必須です'); return; }
+  if (!person) { showToast('「人物名」は必須です'); return; }
+
+  const media = $('f-k-media')?.querySelector('.tag.selected')?.dataset.value || '';
+  const hooks = Array.from($('f-k-hooks')?.querySelectorAll('.tag.selected') || []).map(t => t.dataset.value);
+
+  const entry = {
+    id: uid(),
+    text, person,
+    source: ($('f-k-source')?.value || '').trim(),
+    sourceUrl: ($('f-k-source-url')?.value || '').trim(),
+    media,
+    hooks,
+    note: ($('f-k-note')?.value || '').trim(),
+    rereads: [],
+    registered: dateInputToStr($('f-k-date')?.value) || todayStr(),
+  };
+
+  const list = DB.getKotoba();
+  list.push(entry);
+  DB.setKotoba(list);
+  refreshRandom();
+  resetAndCloseModal();
+  showToast('言葉を書き留めました');
+}
+
+function renderEditKotobaForm(id, titleEl, bodyEl, actionEl) {
+  const k = DB.getKotoba().find(x => x.id === id);
+  if (!k) return;
+
+  titleEl.textContent = '言葉を編集';
+  actionEl.style.display = 'block';
+  actionEl.textContent = '保存';
+  actionEl.onclick = () => submitEditKotoba(id);
+
+  bodyEl.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">言葉 <span class="req">*</span></label>
+      <textarea id="f-k-text" class="form-textarea" rows="4">${esc(k.text)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">人物名 <span class="req">*</span></label>
+      <input type="text" id="f-k-person" class="form-input" value="${esc(k.person)}">
+      ${personSuggestionsHtml(distinctPersons())}
+    </div>
+    <div class="form-group">
+      <label class="form-label">メディア種別</label>
+      <div id="f-k-media" class="tag-list">${mediaChipsHtml(k.media, 'f-k-media')}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">引っかかり種別</label>
+      <div id="f-k-hooks" class="tag-list">${hookChipsHtml(k.hooks, 'f-k-hooks')}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">出典</label>
+      <input type="text" id="f-k-source" class="form-input" value="${esc(k.source)}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">出典URL</label>
+      <input type="url" id="f-k-source-url" class="form-input" value="${esc(k.sourceUrl)}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">なぜ引っかかったか</label>
+      <textarea id="f-k-note" class="form-textarea" rows="3">${esc(k.note)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">日付</label>
+      <input type="date" id="f-k-date" class="form-input" value="${strToDateInput(k.registered)}">
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn-danger" data-action="delete-kotoba" data-id="${esc(id)}">🗑 この言葉を削除</button>
+    </div>`;
+}
+
+function submitEditKotoba(id) {
+  const list = DB.getKotoba();
+  const idx = list.findIndex(x => x.id === id);
+  if (idx === -1) return;
+
+  const text = ($('f-k-text') || {}).value?.trim();
+  const person = ($('f-k-person') || {}).value?.trim();
+  if (!text) { showToast('「言葉」は必須です'); return; }
+  if (!person) { showToast('「人物名」は必須です'); return; }
+
+  const media = $('f-k-media')?.querySelector('.tag.selected')?.dataset.value || '';
+  const hooks = Array.from($('f-k-hooks')?.querySelectorAll('.tag.selected') || []).map(t => t.dataset.value);
+
+  list[idx] = {
+    ...list[idx],
+    text, person,
+    source: ($('f-k-source')?.value || '').trim(),
+    sourceUrl: ($('f-k-source-url')?.value || '').trim(),
+    media,
+    hooks,
+    note: ($('f-k-note')?.value || '').trim(),
+    registered: dateInputToStr($('f-k-date')?.value) || list[idx].registered,
+  };
+
+  DB.setKotoba(list);
+  refreshRandom();
+  resetAndCloseModal();
+  showToast('更新しました');
+}
+
+// ──────────────────────────────────────────────
 // CSV IMPORT
 // ──────────────────────────────────────────────
 function handleImport(event, type) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const keys  = type === 'diary' ? DIARY_KEYS : CONCEPT_KEYS;
-  const label = type === 'diary' ? '日記' : '概念';
+  const config = {
+    diary:   { keys: DIARY_KEYS,   label: '日記' },
+    concept: { keys: CONCEPT_KEYS, label: '概念' },
+    kotoba:  { keys: KOTOBA_KEYS,  label: '言葉' },
+  }[type];
 
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const rows = parseCSV(ev.target.result);
-      const { data, error } = rowsToObjects(rows, keys);
+      const { data, error } = rowsToObjects(rows, config.keys);
 
       if (error || !data.length) {
-        showToast(error || `${label}データが空です`);
+        showToast(error || `${config.label}データが空です`);
         event.target.value = '';
         return;
       }
 
-      if (!confirm(`${label}データを ${data.length} 件インポートします。既存データは全て削除されます。よろしいですか？`)) {
+      if (!confirm(`${config.label}データを ${data.length} 件インポートします。既存データは全て削除されます。よろしいですか？`)) {
         event.target.value = '';
         return;
       }
 
       if (type === 'diary') DB.setDiary(data);
-      else DB.setConcepts(data);
+      else if (type === 'concept') DB.setConcepts(data);
+      else DB.setKotoba(data.map(csvRowToKotoba));
 
       refreshRandom();
       render();
-      showToast(`${label}データを ${data.length} 件インポートしました`);
+      showToast(`${config.label}データを ${data.length} 件インポートしました`);
     } catch (err) {
       console.error('Import error:', err);
       showToast('CSVの読み込みに失敗しました');
@@ -1356,7 +1945,7 @@ document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
 
-  const { action, day, concept } = btn.dataset;
+  const { action, day, concept, id, person, value } = btn.dataset;
 
   switch (action) {
     case 'open-diary':      openModal('diary-detail',   { day }); break;
@@ -1365,6 +1954,86 @@ document.addEventListener('click', e => {
     case 'add-diary':       openModal('add-diary'); break;
     case 'add-concept':     openModal('add-concept'); break;
     case 'edit-diary':      openModal('edit-diary', { day }); break;
+
+    case 'open-kotoba':     openModal('kotoba-detail', { id }); break;
+    case 'add-kotoba':      openModal('add-kotoba'); break;
+    case 'edit-kotoba':     openModal('edit-kotoba', { id }); break;
+    case 'open-person':     openModal('person-page', { person }); break;
+
+    case 'shuffle-kotoba':  state.randKotoba = pickRandomKotoba(state.randKotoba?.id); render(); break;
+    case 'shuffle-cross':   pickCrossPair(); render(); break;
+
+    case 'toggle-hook-filter':  state.kotobaHookFilter  = value || ''; render(); break;
+    case 'toggle-media-filter': state.kotobaMediaFilter = value || ''; render(); break;
+
+    case 'toggle-media-chip': {
+      const container = $(btn.dataset.group);
+      const wasSelected = btn.classList.contains('selected');
+      container?.querySelectorAll('.tag').forEach(t => t.classList.remove('selected'));
+      if (!wasSelected) btn.classList.add('selected');
+      break;
+    }
+    case 'toggle-hook-chip': {
+      btn.classList.toggle('selected');
+      break;
+    }
+    case 'pick-person-suggestion': {
+      const inp = $('f-k-person');
+      if (inp) inp.value = person;
+      break;
+    }
+
+    case 'add-reread': {
+      const area = $('reread-add-area');
+      if (area) {
+        area.innerHTML = `
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="reread-input" class="form-input" placeholder="一行で" style="flex:1">
+            <button class="btn-secondary" style="font-size:13px;flex-shrink:0" data-action="save-reread" data-id="${esc(id)}">保存</button>
+          </div>`;
+        $('reread-input')?.focus();
+      }
+      break;
+    }
+    case 'save-reread': {
+      const inp = $('reread-input');
+      const note = (inp?.value || '').trim();
+      if (!note) { showToast('一行、書いてみましょう'); break; }
+      const list = DB.getKotoba();
+      const idx = list.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        if (!Array.isArray(list[idx].rereads)) list[idx].rereads = [];
+        list[idx].rereads.push({ date: rereadDateStr(), note });
+        DB.setKotoba(list);
+        applyModal();
+        showToast('記録しました');
+      }
+      break;
+    }
+
+    case 'delete-kotoba': {
+      if (confirm('この言葉を削除しますか？')) {
+        DB.setKotoba(DB.getKotoba().filter(k => k.id !== id));
+        refreshRandom();
+        resetAndCloseModal();
+        showToast('削除しました');
+      }
+      break;
+    }
+    case 'export-kotoba': {
+      const k = DB.getKotoba();
+      if (!k.length) { showToast('言葉データがありません'); return; }
+      downloadCSV('hikkakari-kotoba.csv', buildCSV(KOTOBA_KEYS, k.map(kotobaToCSVRow)));
+      showToast('エクスポートしました');
+      break;
+    }
+    case 'reset-kotoba': {
+      if (confirm('言葉データを全て削除しますか？')) {
+        DB.setKotoba([]); refreshRandom(); render();
+        showToast('言葉データを削除しました');
+      }
+      break;
+    }
 
     case 'delete-diary': {
       if (confirm(`Day ${day} を削除しますか？`)) {
@@ -1438,7 +2107,7 @@ function setupManifest() {
   const manifest = {
     name: '引っかかり日記',
     short_name: '引っかかり',
-    description: '気づきの記録と概念ストック',
+    description: '気づきの記録・概念ストック・言葉辞典',
     start_url: './',
     display: 'standalone',
     orientation: 'portrait',
